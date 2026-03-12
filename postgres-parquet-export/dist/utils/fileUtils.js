@@ -1,4 +1,4 @@
-import fs from "fs-extra";
+import fs from 'fs-extra';
 export const ensureDir = async (dir) => {
     await fs.ensureDir(dir);
 };

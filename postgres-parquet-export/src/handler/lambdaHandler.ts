@@ -1,30 +1,30 @@
-import { createClient } from "../db/postgresClient.js"
-import { exportData } from "../services/exportService.js"
+import { createClient } from '../db/postgresClient.js'
+import { exportData } from '../services/exportService.js'
 
-export const handler = async (p0: {}, p1: any) => {
-
-  const client = createClient()
+export const handler = async (
+  event: unknown,
+  context: unknown
+): Promise<{ statusCode: number; body: string }> => {
+  const postgresClient = createClient()
 
   try {
+    await postgresClient.connect()
 
-    await client.connect()
-
-    await exportData(client)
-
-    await client.end()
+    await exportData(postgresClient)
 
     return {
       statusCode: 200,
-      body: JSON.stringify({ message: "Export complete" })
+      body: JSON.stringify({ message: 'Export completed successfully' }),
     }
-
-  } catch (error: any) {
-
-    await client.end()
+  } catch (error) {
+    const errorMessage =
+      error instanceof Error ? error.message : 'Unknown error occurred'
 
     return {
       statusCode: 500,
-      body: error.message
+      body: JSON.stringify({ error: errorMessage }),
     }
+  } finally {
+    await postgresClient.end()
   }
 }
