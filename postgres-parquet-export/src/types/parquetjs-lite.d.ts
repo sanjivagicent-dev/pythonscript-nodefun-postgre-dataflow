@@ -1,1 +1,1 @@
-declare module "parquetjs-lite";
+declare module 'parquetjs-lite'
