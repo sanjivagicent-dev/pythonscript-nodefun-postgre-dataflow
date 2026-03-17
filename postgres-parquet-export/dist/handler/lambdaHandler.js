@@ -1,10 +1,9 @@
-import { createClient } from '../db/postgresClient.js';
+import { PrismaClient } from '../generated/prisma/client.js';
 import { exportData } from '../services/exportService.js';
-export const handler = async (event, context) => {
-    const postgresClient = createClient();
+export const handler = async () => {
+    const prisma = new PrismaClient(); // ✅ moved inside
     try {
-        await postgresClient.connect();
-        await exportData(postgresClient);
+        await exportData(prisma);
         return {
             statusCode: 200,
             body: JSON.stringify({ message: 'Export completed successfully' }),
@@ -18,6 +17,6 @@ export const handler = async (event, context) => {
         };
     }
     finally {
-        await postgresClient.end();
+        await prisma.$disconnect();
     }
 };

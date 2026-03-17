@@ -4,13 +4,17 @@ async function run() {
   try {
     console.log('Starting local Lambda test...')
 
-    const result = await handler({}, {} as any)
+    const result = await handler() // ✅ correct
 
     console.log('Result:', result)
   } catch (error) {
     console.error('FULL ERROR:')
     console.error(error)
-    console.error(JSON.stringify(error, null, 2))
+
+    if (error instanceof Error) {
+      console.error('Message:', error.message)
+      console.error('Stack:', error.stack)
+    }
   }
 }
 

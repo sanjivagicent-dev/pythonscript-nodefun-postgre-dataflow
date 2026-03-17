@@ -1,0 +1,32 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model well_data {
+  date                 DateTime? @db.Date
+  asset_id             String?
+  facility_id          String?
+  allocated_oil        Float?
+  avg_tubing_pressure  Float?
+  avg_casing_pressure  Float?
+  avg_motor_amps       Float?
+  gross_stroke_len     Float?
+  net_stroke_len       Float?
+  spm                  Float?
+  pump_fillage_pct     Float?
+  freq_hz              Float?
+  pump_intake_pressure Float?
+  motor_temp_f         Float?
+  injection_rate_mcf   Float?
+  status               String?
+  notes                String?
+  id                   String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+
+  @@index([date, asset_id, facility_id], map: "idx_well_data_date_asset")
+}

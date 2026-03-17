@@ -1,16 +1,14 @@
-import { createClient } from '../db/postgresClient.js'
+import { PrismaClient } from '../generated/prisma/client.js'
 import { exportData } from '../services/exportService.js'
 
-export const handler = async (
-  event: unknown,
-  context: unknown
-): Promise<{ statusCode: number; body: string }> => {
-  const postgresClient = createClient()
+export const handler = async (): Promise<{
+  statusCode: number
+  body: string
+}> => {
+  const prisma = new PrismaClient() // ✅ moved inside
 
   try {
-    await postgresClient.connect()
-
-    await exportData(postgresClient)
+    await exportData(prisma)
 
     return {
       statusCode: 200,
@@ -25,6 +23,6 @@ export const handler = async (
       body: JSON.stringify({ error: errorMessage }),
     }
   } finally {
-    await postgresClient.end()
+    await prisma.$disconnect()
   }
 }
