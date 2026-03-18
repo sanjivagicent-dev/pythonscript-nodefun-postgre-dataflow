@@ -10,8 +10,9 @@
     "start": "node dist/handler/lambdaHandler.js",
     "format": "prettier --write .",
     "lint": "eslint src --ext .ts",
-    "dev:test": "ts-node-esm src/test/localTest.ts"
- 
+
+    "test": "NODE_OPTIONS=--experimental-vm-modules jest",
+    "dev:test": "NODE_OPTIONS=--experimental-vm-modules jest src/test/handler.test.ts"
   },
   "dependencies": {
     "@prisma/client": "^6.19.2",
@@ -29,15 +30,18 @@
     "@eslint/js": "^9.39.4",
     "@types/aws-sdk": "^2.7.0",
     "@types/fs-extra": "^11.0.4",
-    "@types/node": "^20.11.30",
+    "@types/jest": "^30.0.0",
+    "@types/node": "^20.19.37",
     "@types/pg": "^8.11.5",
     "@typescript-eslint/eslint-plugin": "^8.57.0",
     "@typescript-eslint/parser": "^8.57.0",
     "eslint": "^9.39.4",
     "globals": "^17.4.0",
+    "jest": "^30.3.0",
     "pino-pretty": "^13.1.3",
     "prettier": "^3.8.1",
     "rimraf": "^5.0.5",
+    "ts-jest": "^29.4.6",
     "ts-node": "^10.9.2",
     "typescript": "^5.9.3"
   }
