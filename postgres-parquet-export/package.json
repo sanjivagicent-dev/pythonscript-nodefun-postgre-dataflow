@@ -10,7 +10,6 @@
     "start": "node dist/handler/lambdaHandler.js",
     "format": "prettier --write .",
     "lint": "eslint src --ext .ts",
-
     "test": "NODE_OPTIONS=--experimental-vm-modules jest",
     "dev:test": "NODE_OPTIONS=--experimental-vm-modules jest src/test/handler.test.ts"
   },

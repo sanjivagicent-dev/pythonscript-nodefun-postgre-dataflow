@@ -8,6 +8,7 @@ from psycopg2.extras import execute_values
 conn = psycopg2.connect(
     dbname="oilfield",
     user="postgres",
+    password="postgres",
     host="127.0.0.1",
     port="5433"
 )

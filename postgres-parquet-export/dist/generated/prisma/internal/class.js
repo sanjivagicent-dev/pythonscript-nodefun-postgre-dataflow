@@ -18,7 +18,7 @@ const config = {
             "value": "prisma-client"
         },
         "output": {
-            "value": "/home/sanjivranjankumarmishra/python_postgres_setup/pythonscript-nodefun-postgre-dataflow/postgres-parquet-export/src/generated/prisma",
+            "value": "/home/sanjivkrranjanmishra/sanjeev/pythonscript-nodefun-postgre-dataflow/postgres-parquet-export/src/generated/prisma",
             "fromEnvVar": null
         },
         "config": {
@@ -32,7 +32,7 @@ const config = {
             }
         ],
         "previewFeatures": [],
-        "sourceFilePath": "/home/sanjivranjankumarmishra/python_postgres_setup/pythonscript-nodefun-postgre-dataflow/postgres-parquet-export/prisma/schema.prisma",
+        "sourceFilePath": "/home/sanjivkrranjanmishra/sanjeev/pythonscript-nodefun-postgre-dataflow/postgres-parquet-export/prisma/schema.prisma",
         "isCustomOutput": true
     },
     "relativePath": "../../../prisma",

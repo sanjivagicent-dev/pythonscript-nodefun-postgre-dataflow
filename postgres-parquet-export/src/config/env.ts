@@ -13,6 +13,7 @@ const requiredEnv = (name: string): string => {
 export const config = {
   db: {
     user: requiredEnv('DB_USER'),
+    password: requiredEnv('DB_PASS'),   // ✅ ADDED
     host: requiredEnv('DB_HOST'),
     database: requiredEnv('DB_NAME'),
     port: Number(requiredEnv('DB_PORT')),
