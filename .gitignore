@@ -1,7 +1,22 @@
+# Node.js
 node_modules/
+
+# Python virtual environment
 venv/
+
+# Environment variables
 .env
+
+# Logs
 *.log
-.parquet
+
+# Data files
+*.parquet
+
+# Temporary files
 tmp/
 
+# OS / editor junk (recommended additions)
+.DS_Store
+Thumbs.db
+*.swp
