@@ -15,6 +15,6 @@
 
     "typeRoots": ["./src/types", "./node_modules/@types"]
   },
-  "exclude": ["prisma.config.ts", "prisma"]
+  "exclude": ["prisma.config.ts", "prisma", "infra"]
 }
 
