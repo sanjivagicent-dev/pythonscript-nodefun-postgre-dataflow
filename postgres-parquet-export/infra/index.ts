@@ -13,6 +13,7 @@ new aws.iam.RolePolicyAttachment("lambdaPolicy", {
 policyArn: "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 });
 
+
 // Point to your compiled JS (IMPORTANT)
 const codeArchive = new pulumi.asset.AssetArchive({
     ".": new pulumi.asset.FileArchive("../dist"),
