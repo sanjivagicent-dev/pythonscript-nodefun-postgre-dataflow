@@ -1,5 +1,9 @@
 # Node.js
 node_modules/
+**/node_modules/
+
+# Build output
+dist/
 
 # Python virtual environment
 venv/
@@ -14,9 +18,12 @@ venv/
 *.parquet
 
 # Temporary files
-tmp/
+# tmp/
 
-# OS / editor junk (recommended additions)
+# Pulumi (local state)
+.pulumi/
+
+# OS / editor junk
 .DS_Store
 Thumbs.db
 *.swp

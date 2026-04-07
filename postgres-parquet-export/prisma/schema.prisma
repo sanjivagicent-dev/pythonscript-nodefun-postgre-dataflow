@@ -9,7 +9,8 @@ datasource db {
 }
 
 model well_data {
-  date                 DateTime? @db.Date
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+  date                 DateTime? @db.Timestamp(6)
   asset_id             String?
   facility_id          String?
   allocated_oil        Float?
@@ -26,7 +27,30 @@ model well_data {
   injection_rate_mcf   Float?
   status               String?
   notes                String?
-  id                   String    @id @default(dbgenerated("uuid_generate_v4()")) @db.Uuid
+}
 
-  @@index([date, asset_id, facility_id], map: "idx_well_data_date_asset")
+model production_history {
+  id            BigInt    @id @default(autoincrement())
+  asset_id      String?
+  date          DateTime? @db.Date
+  allocated_oil Float?
+  motor_temp_f  Float?
+  status        String?
+  notes         String?
+
+  @@index([asset_id, date], map: "idx_asset_date")
+}
+
+model invoices {
+  id                  BigInt    @id @default(autoincrement())
+  invoice_id          String?
+  invoice_date        DateTime? @db.Date
+  category            String?
+  gl_code             String?
+  service_description String?
+  vendor              String?
+  asset_id            String?
+  total_usd           Float?
+
+  @@index([asset_id, invoice_date], map: "idx_invoice_asset_date")
 }
