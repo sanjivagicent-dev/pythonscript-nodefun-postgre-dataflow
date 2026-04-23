@@ -10,10 +10,22 @@ datasource db {
 
 model well_data {
   id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
-  date                 DateTime? @db.Timestamp(6)
-  asset_id             String?
-  facility_id          String?
-  allocated_oil        Float?
+
+  date                 DateTime  @db.Timestamp(6)
+  asset_id             String
+  facility_id          String
+
+  // ✅ TRUE PRODUCTION
+  true_oil             Float?
+  true_water           Float?
+  true_gas             Float?
+
+  // ✅ TEST DATA
+  test_oil             Float?
+  test_water           Float?
+  test_gas             Float?
+
+  // ✅ KPIs
   avg_tubing_pressure  Float?
   avg_casing_pressure  Float?
   avg_motor_amps       Float?
@@ -25,8 +37,14 @@ model well_data {
   pump_intake_pressure Float?
   motor_temp_f         Float?
   injection_rate_mcf   Float?
+
+  // ✅ STATUS
   status               String?
   notes                String?
+
+  // ✅ INDEXES (VERY IMPORTANT)
+  @@index([asset_id, date])
+  @@index([facility_id, date])
 }
 
 model production_history {

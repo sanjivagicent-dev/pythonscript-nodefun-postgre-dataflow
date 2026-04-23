@@ -280,44 +280,57 @@ def run_simulation():
     print("Bulk inserting into PostgreSQL...")
 
     insert_query = """
-        INSERT INTO well_data (
-            date,
-            asset_id,
-            facility_id,
-            allocated_oil,
-            avg_tubing_pressure,
-            avg_casing_pressure,
-            avg_motor_amps,
-            gross_stroke_len,
-            net_stroke_len,
-            spm,
-            pump_fillage_pct,
-            freq_hz,
-            pump_intake_pressure,
-            motor_temp_f,
-            injection_rate_mcf,
-            status,
-            notes
-        ) VALUES %s
+    INSERT INTO well_data (
+        date,
+        asset_id,
+        facility_id,
+        true_oil,
+        true_water,
+        true_gas,
+        test_oil,
+        test_water,
+        test_gas,
+        avg_tubing_pressure,
+        avg_casing_pressure,
+        avg_motor_amps,
+        gross_stroke_len,
+        net_stroke_len,
+        spm,
+        pump_fillage_pct,
+        freq_hz,
+        pump_intake_pressure,
+        motor_temp_f,
+        injection_rate_mcf,
+        status,
+        notes
+    ) VALUES %s
     """
+
+    def clean(val):
+        return None if pd.isna(val) else float(val)
 
     data = [
         (
             row["date"],
             row["asset_id"],
             row["facility_id"],
-            row["true_oil"],
-            row["avg_tubing_pressure"],
-            row["avg_casing_pressure"],
-            row["avg_motor_amps"],
-            row["gross_stroke_len"],
-            row["net_stroke_len"],
-            row["spm"],
-            row["pump_fillage_pct"],
-            row["freq_hz"],
-            row["pump_intake_pressure"],
-            row["motor_temp_f"],
-            row["injection_rate_mcf"],
+            clean(row["true_oil"]),
+            clean(row["true_water"]),
+            clean(row["true_gas"]),
+            clean(row["test_oil"]),
+            clean(row["test_water"]),
+            clean(row["test_gas"]),
+            clean(row["avg_tubing_pressure"]),
+            clean(row["avg_casing_pressure"]),
+            clean(row["avg_motor_amps"]),
+            clean(row["gross_stroke_len"]),
+            clean(row["net_stroke_len"]),
+            clean(row["spm"]),
+            clean(row["pump_fillage_pct"]),
+            clean(row["freq_hz"]),
+            clean(row["pump_intake_pressure"]),
+            clean(row["motor_temp_f"]),
+            clean(row["injection_rate_mcf"]),
             row["status"],
             row["notes"]
         )
@@ -325,13 +338,12 @@ def run_simulation():
     ]
 
     execute_values(cursor, insert_query, data)
-
     conn.commit()
 
     print("Data inserted successfully!")
 
     # ---------------- CREATE JSON OUTPUT ----------------
-
+      # ---------------- CREATE JSON OUTPUT ----------------
     output = {"company": "Apex Permian", "assets": {}}
 
     for w in well_meta:
@@ -347,6 +359,11 @@ def run_simulation():
             "history": []
         }
 
+    # ✅ helper INSIDE function
+    def clean_json(val):
+        return None if pd.isna(val) else round(val, 2)
+
+    # ---------------- BUILD HISTORY ----------------
     for fid in master_df["facility_id"].unique():
 
         fac_df = master_df[master_df["facility_id"] == fid]
@@ -355,12 +372,10 @@ def run_simulation():
 
             d_str = date.strftime("%Y-%m-%d")
 
-            esd = False
-            if random.random() < 0.0005:
-                esd = True
-
+            esd = random.random() < 0.0005
             total_oil = day_data["true_oil"].sum() if not esd else 0
 
+            # --- FACILITY LEVEL ---
             output["assets"][fid]["history"].append({
                 "date": d_str,
                 "oil_prod": round(total_oil, 2),
@@ -369,34 +384,48 @@ def run_simulation():
 
             sum_true = day_data["true_oil"].sum()
 
+            # --- WELL LEVEL ---
             for _, row in day_data.iterrows():
 
                 alloc_oil = 0
                 if not esd and sum_true > 0:
                     alloc_oil = total_oil * (row["true_oil"] / sum_true)
 
-                def clean(val):
-                    return None if pd.isna(val) else round(val, 2)
-
                 output["assets"][row["asset_id"]]["history"].append({
                     "date": d_str,
+
+                    # ✅ TRUE PRODUCTION
+                    "true_oil": round(row["true_oil"], 2),
+                    "true_water": round(row["true_water"], 2),
+                    "true_gas": round(row["true_gas"], 2),
+
+                    # ✅ ALLOCATION
                     "allocated_oil": round(alloc_oil, 2),
-                    "test_oil": row["test_oil"],
-                    "avg_tubing_pressure": clean(row["avg_tubing_pressure"]),
-                    "avg_casing_pressure": clean(row["avg_casing_pressure"]),
-                    "avg_motor_amps": clean(row["avg_motor_amps"]),
-                    "gross_stroke_len": clean(row["gross_stroke_len"]),
-                    "net_stroke_len": clean(row["net_stroke_len"]),
-                    "spm": clean(row["spm"]),
-                    "pump_fillage_pct": clean(row["pump_fillage_pct"]),
-                    "freq_hz": clean(row["freq_hz"]),
-                    "pump_intake_pressure": clean(row["pump_intake_pressure"]),
-                    "motor_temp_f": clean(row["motor_temp_f"]),
-                    "injection_rate_mcf": clean(row["injection_rate_mcf"]),
+
+                    # ✅ TEST DATA
+                    "test_oil": clean_json(row["test_oil"]),
+                    "test_water": clean_json(row["test_water"]),
+                    "test_gas": clean_json(row["test_gas"]),
+
+                    # ✅ KPIs
+                    "avg_tubing_pressure": clean_json(row["avg_tubing_pressure"]),
+                    "avg_casing_pressure": clean_json(row["avg_casing_pressure"]),
+                    "avg_motor_amps": clean_json(row["avg_motor_amps"]),
+                    "gross_stroke_len": clean_json(row["gross_stroke_len"]),
+                    "net_stroke_len": clean_json(row["net_stroke_len"]),
+                    "spm": clean_json(row["spm"]),
+                    "pump_fillage_pct": clean_json(row["pump_fillage_pct"]),
+                    "freq_hz": clean_json(row["freq_hz"]),
+                    "pump_intake_pressure": clean_json(row["pump_intake_pressure"]),
+                    "motor_temp_f": clean_json(row["motor_temp_f"]),
+                    "injection_rate_mcf": clean_json(row["injection_rate_mcf"]),
+
+                    # ✅ STATUS
                     "status": "SHUT_IN" if esd else row["status"],
                     "notes": row["notes"]
                 })
 
+    # ---------------- SAVE JSON ----------------
     with open("apex_permian_v3_1_engineering.json", "w") as f:
         json.dump(output, f, indent=2, default=str)
 
@@ -404,6 +433,5 @@ def run_simulation():
 
     cursor.close()
     conn.close()
-
 if __name__ == "__main__":
     run_simulation()
