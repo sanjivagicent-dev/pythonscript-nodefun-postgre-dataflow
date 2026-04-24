@@ -1,14 +1,29 @@
 import parquet from 'parquetjs-lite'
 import { logger } from '../utils/logger.js'
 
-logger.info('Initializing Parquet schema for well export')
+logger.info('Initializing Parquet schemas for export')
 
+/**
+ * WELL DATA SCHEMA
+ * Matches Prisma model: well_data
+ */
 export const wellSchema = new parquet.ParquetSchema({
-  date: { type: 'TIMESTAMP_MILLIS' },  // ✅ fixed
+  // Core fields
+  date: { type: 'TIMESTAMP_MILLIS' },
   asset_id: { type: 'UTF8' },
-  facility_id: { type: 'UTF8', optional: true },
+  facility_id: { type: 'UTF8' },
 
-  allocated_oil: { type: 'DOUBLE', optional: true },
+  // ✅ TRUE PRODUCTION
+  true_oil: { type: 'DOUBLE', optional: true },
+  true_water: { type: 'DOUBLE', optional: true },
+  true_gas: { type: 'DOUBLE', optional: true },
+
+  // ✅ TEST DATA
+  test_oil: { type: 'DOUBLE', optional: true },
+  test_water: { type: 'DOUBLE', optional: true },
+  test_gas: { type: 'DOUBLE', optional: true },
+
+  // ✅ KPIs
   avg_tubing_pressure: { type: 'DOUBLE', optional: true },
   avg_casing_pressure: { type: 'DOUBLE', optional: true },
   avg_motor_amps: { type: 'DOUBLE', optional: true },
@@ -23,33 +38,48 @@ export const wellSchema = new parquet.ParquetSchema({
   motor_temp_f: { type: 'DOUBLE', optional: true },
   injection_rate_mcf: { type: 'DOUBLE', optional: true },
 
+  // ✅ STATUS
   status: { type: 'UTF8', optional: true },
   notes: { type: 'UTF8', optional: true },
 })
 
+/**
+ * PRODUCTION HISTORY SCHEMA
+ * Matches Prisma model: production_history
+ */
 export const productionSchema = new parquet.ParquetSchema({
-  asset_id: { type: 'UTF8' },
-  date: { type: 'TIMESTAMP_MILLIS' },
+  asset_id: { type: 'UTF8', optional: true },
+  date: { type: 'TIMESTAMP_MILLIS', optional: true },
+
   allocated_oil: { type: 'DOUBLE', optional: true },
   motor_temp_f: { type: 'DOUBLE', optional: true },
+
   status: { type: 'UTF8', optional: true },
   notes: { type: 'UTF8', optional: true },
 })
 
+/**
+ * INVOICES SCHEMA
+ * Matches Prisma model: invoices
+ */
 export const invoiceSchema = new parquet.ParquetSchema({
-  invoice_id: { type: 'UTF8' },
-  invoice_date: { type: 'TIMESTAMP_MILLIS' },
+  invoice_id: { type: 'UTF8', optional: true },
+  invoice_date: { type: 'TIMESTAMP_MILLIS', optional: true },
+
   category: { type: 'UTF8', optional: true },
   gl_code: { type: 'UTF8', optional: true },
   service_description: { type: 'UTF8', optional: true },
   vendor: { type: 'UTF8', optional: true },
+
   asset_id: { type: 'UTF8', optional: true },
   total_usd: { type: 'DOUBLE', optional: true },
 })
 
 logger.info(
   {
-    columnCount: Object.keys(wellSchema.fields).length,
+    wellColumns: Object.keys(wellSchema.fields).length,
+    productionColumns: Object.keys(productionSchema.fields).length,
+    invoiceColumns: Object.keys(invoiceSchema.fields).length,
   },
-  'Parquet schema initialized successfully'
+  'Parquet schemas initialized successfully'
 )
