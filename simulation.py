@@ -1,21 +1,3 @@
-"""
-Apex Permian — Engineering-Grade Digital Twin v4.0
-===================================================
-Implements all 7 improvements from the Predictive Maintenance Data Realism Brief:
-
-  P1  Pre-failure degradation ramps (convex, lift-type-specific)
-  P2  Mechanistically distinct failure modes with inter-sensor causal lags
-  P3  AR(1) correlated noise (autocorrelated sensor readings)
-  P4  Non-failure operational events (choke adjust, chemical treatment, etc.)
-  P5  Realistic post-failure recovery ramps with permanent damage offset
-  P6  Early / Mid / Late failure differentiation (severity + lead time)
-  P7  New schema fields: degradation_phase, failure_mode, days_to_failure,
-      is_operational_event, event_type, post_failure_recovery_day,
-      noise_seed_ar1 (internal), pre_failure_ramp_intensity
-
-New DB/Parquet columns added (listed at bottom of file).
-"""
-
 import json
 import pandas as pd
 import numpy as np
@@ -716,137 +698,13 @@ def run_simulation():
     print("Data inserted successfully!")
 
     # ── SAVE PARQUET ──────────────────────────────────────────────────────────
-    # master_df.to_parquet("apex_permian_v4.parquet", index=False, engine="pyarrow")
-    # print("Parquet saved: apex_permian_v4.parquet")
+    master_df.to_parquet("apex_permian_v4.parquet", index=False, engine="pyarrow")
+    print("Parquet saved: apex_permian_v4.parquet")
 
-    # ── BUILD JSON ────────────────────────────────────────────────────────────
-    output = {"company": "Apex Permian", "assets": {}}
-
-    for w in well_meta:
-        output["assets"][w["asset_id"]] = {
-            "type": "Well",
-            "lift": w["lift_type"],
-            "history": [],
-        }
-    for fid in fac_meta:
-        output["assets"][fid] = {"type": "Facility", "history": []}
-
-    def cj(v):
-        return None if pd.isna(v) else round(float(v), 2)
-
-    for fid in master_df["facility_id"].unique():
-        fac_df = master_df[master_df["facility_id"] == fid]
-        for date, day_data in fac_df.groupby("date"):
-            d_str   = date.strftime("%Y-%m-%d")
-            esd     = random.random() < 0.0005
-            total_oil = day_data["true_oil"].sum() if not esd else 0
-            output["assets"][fid]["history"].append(
-                {"date": d_str, "oil_prod": round(total_oil, 2), "status": "ESD" if esd else "OK"}
-            )
-            sum_true = day_data["true_oil"].sum()
-            for _, row in day_data.iterrows():
-                alloc_oil = 0
-                if not esd and sum_true > 0:
-                    alloc_oil = total_oil * (row["true_oil"] / sum_true)
-                output["assets"][row["asset_id"]]["history"].append(
-                    {
-                        "date":         d_str,
-                        "true_oil":     round(row["true_oil"], 2),
-                        "true_water":   round(row["true_water"], 2),
-                        "true_gas":     round(row["true_gas"], 2),
-                        "allocated_oil": round(alloc_oil, 2),
-                        "test_oil":     cj(row["test_oil"]),
-                        "test_water":   cj(row["test_water"]),
-                        "test_gas":     cj(row["test_gas"]),
-                        "avg_tubing_pressure":   cj(row["avg_tubing_pressure"]),
-                        "avg_casing_pressure":   cj(row["avg_casing_pressure"]),
-                        "avg_motor_amps":         cj(row["avg_motor_amps"]),
-                        "gross_stroke_len":       cj(row["gross_stroke_len"]),
-                        "net_stroke_len":         cj(row["net_stroke_len"]),
-                        "spm":                    cj(row["spm"]),
-                        "pump_fillage_pct":       cj(row["pump_fillage_pct"]),
-                        "freq_hz":                cj(row["freq_hz"]),
-                        "pump_intake_pressure":   cj(row["pump_intake_pressure"]),
-                        "motor_temp_f":           cj(row["motor_temp_f"]),
-                        "injection_rate_mcf":     cj(row["injection_rate_mcf"]),
-                        "status":       "SHUT_IN" if esd else row["status"],
-                        "notes":        row["notes"],
-                        # new fields
-                        "degradation_phase":            row["degradation_phase"],
-                        "failure_mode":                 row["failure_mode"],
-                        "days_to_failure":              int(row["days_to_failure"]) if row["days_to_failure"] >= 0 else None,
-                        "is_operational_event":         bool(row["is_operational_event"]),
-                        "event_type":                   row["event_type"],
-                        "post_failure_recovery_day":    int(row["post_failure_recovery_day"]) if row["post_failure_recovery_day"] >= 0 else None,
-                        "pre_failure_ramp_intensity":   cj(row["pre_failure_ramp_intensity"]),
-                    }
-                )
-
-    with open("apex_permian_v4.json", "w") as f:
-        json.dump(output, f, indent=2, default=str)
-    print("JSON saved: apex_permian_v4.json")
-
+  
     cursor.close()
     conn.close()
 
 
 if __name__ == "__main__":
     run_simulation()
-
-
-# =============================================================================
-# NEW SCHEMA FIELDS  (add these to your existing well_data table / model)
-# =============================================================================
-#
-# ── PostgreSQL migration (append to your existing CREATE TABLE or run ALTER) ──
-#
-#   ALTER TABLE well_data
-#     ADD COLUMN degradation_phase          TEXT          DEFAULT 'Normal',
-#     ADD COLUMN failure_mode               TEXT          DEFAULT '',
-#     ADD COLUMN days_to_failure            INTEGER,
-#     ADD COLUMN is_operational_event       BOOLEAN       NOT NULL DEFAULT FALSE,
-#     ADD COLUMN event_type                 TEXT          DEFAULT '',
-#     ADD COLUMN post_failure_recovery_day  INTEGER,
-#     ADD COLUMN pre_failure_ramp_intensity DOUBLE PRECISION DEFAULT 0.0;
-#
-#   -- Recommended indexes for ML feature queries
-#   CREATE INDEX idx_wdata_deg_phase   ON well_data (degradation_phase);
-#   CREATE INDEX idx_wdata_fail_mode   ON well_data (failure_mode);
-#   CREATE INDEX idx_wdata_d2f         ON well_data (days_to_failure);
-#   CREATE INDEX idx_wdata_op_event    ON well_data (is_operational_event);
-#
-#
-# ── schema.prisma additions ──────────────────────────────────────────────────
-#
-#   model WellData {
-#     // ... existing fields ...
-#
-#     degradationPhase          String    @default("Normal")  @map("degradation_phase")
-#     failureMode               String    @default("")        @map("failure_mode")
-#     daysToFailure             Int?                          @map("days_to_failure")
-#     isOperationalEvent        Boolean   @default(false)     @map("is_operational_event")
-#     eventType                 String    @default("")        @map("event_type")
-#     postFailureRecoveryDay    Int?                          @map("post_failure_recovery_day")
-#     preFailureRampIntensity   Float     @default(0.0)       @map("pre_failure_ramp_intensity")
-#
-#     @@map("well_data")
-#   }
-#
-#
-# ── Parquet schema (PyArrow) ─────────────────────────────────────────────────
-#
-#   import pyarrow as pa
-#
-#   NEW_FIELDS = [
-#       pa.field("degradation_phase",           pa.string()),
-#       pa.field("failure_mode",                pa.string()),
-#       pa.field("days_to_failure",             pa.int32()),        # null = not in ramp
-#       pa.field("is_operational_event",        pa.bool_()),
-#       pa.field("event_type",                  pa.string()),
-#       pa.field("post_failure_recovery_day",   pa.int32()),        # null = not recovering
-#       pa.field("pre_failure_ramp_intensity",  pa.float64()),      # 0.0–1.0
-#   ]
-#
-#   # Append to your existing SCHEMA list and pass to pa.schema([...existing..., *NEW_FIELDS])
-#
-# =============================================================================
