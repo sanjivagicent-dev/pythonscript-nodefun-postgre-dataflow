@@ -1,0 +1,106 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model well_data {
+  id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
+
+  date                 DateTime  @db.Timestamp(6)
+  asset_id             String
+  facility_id          String
+
+  // ✅ TRUE PRODUCTION
+  true_oil             Float?
+  true_water           Float?
+  true_gas             Float?
+
+  // ✅ TEST DATA
+  test_oil             Float?
+  test_water           Float?
+  test_gas             Float?
+
+  // ✅ KPIs
+  avg_tubing_pressure  Float?
+  avg_casing_pressure  Float?
+  avg_motor_amps       Float?
+  gross_stroke_len     Float?
+  net_stroke_len       Float?
+  spm                  Float?
+  pump_fillage_pct     Float?
+  freq_hz              Float?
+  pump_intake_pressure Float?
+  motor_temp_f         Float?
+  injection_rate_mcf   Float?
+
+  // ✅ STATUS
+  status               String?
+  notes                String?
+
+  // ✅ PREDICTIVE MAINTENANCE — Phase & Label
+  // "Normal" | "Pre-Failure" | "Failure" | "Post-Failure"
+  degradation_phase          String?   @default("Normal")
+
+  // e.g. "Parted Rods", "Scale Deposition", "Liquid Loading"
+  failure_mode               String?   @default("")
+
+  // Countdown to failure in days within the pre-failure ramp window.
+  // NULL outside the ramp window (Normal / Failure / Post-Failure days).
+  days_to_failure            Int?
+
+  // 0.0 – 1.0 scalar: how far along the degradation ramp this row is.
+  // 0.0 = start of ramp / normal; 1.0 = day of failure.
+  pre_failure_ramp_intensity Float?    @default(0)
+
+  // ✅ PREDICTIVE MAINTENANCE — Operational Events (non-failure excursions)
+  // True when the row belongs to a planned operational event
+  // (choke adjustment, chemical treatment, planned workover, etc.)
+  is_operational_event       Boolean   @default(false)
+
+  // Human-readable event label, e.g. "Choke Adjustment", "Frequency Ramp"
+  event_type                 String?   @default("")
+
+  // ✅ PREDICTIVE MAINTENANCE — Post-Failure Recovery
+  // Day number within the recovery ramp after a workover (1, 2, 3 …).
+  // NULL when not in a recovery window.
+  post_failure_recovery_day  Int?
+
+  // ✅ INDEXES (VERY IMPORTANT)
+  @@index([asset_id, date])
+  @@index([facility_id, date])
+  @@index([degradation_phase])
+  @@index([failure_mode])
+  @@index([days_to_failure])
+  @@index([is_operational_event])
+}
+
+model production_history {
+  id            BigInt    @id @default(autoincrement())
+  asset_id      String?
+  date          DateTime? @db.Date
+  allocated_oil Float?
+  motor_temp_f  Float?
+  status        String?
+  notes         String?
+
+  @@index([asset_id, date], map: "idx_asset_date")
+}
+
+model invoices {
+  id                  BigInt    @id @default(autoincrement())
+  invoice_id          String?
+  invoice_date        DateTime? @db.Date
+  category            String?
+  gl_code             String?
+  service_description String?
+  vendor              String?
+  asset_id            String?
+  total_usd           Float?
+
+  @@index([asset_id, invoice_date], map: "idx_invoice_asset_date")
+}

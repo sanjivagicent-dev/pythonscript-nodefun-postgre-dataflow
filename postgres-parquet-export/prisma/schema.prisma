@@ -42,9 +42,41 @@ model well_data {
   status               String?
   notes                String?
 
+  // ✅ PREDICTIVE MAINTENANCE — Phase & Label
+  // "Normal" | "Pre-Failure" | "Failure" | "Post-Failure"
+  degradation_phase          String?   @default("Normal")
+
+  // e.g. "Parted Rods", "Scale Deposition", "Liquid Loading"
+  failure_mode               String?   @default("")
+
+  // Countdown to failure in days within the pre-failure ramp window.
+  // NULL outside the ramp window (Normal / Failure / Post-Failure days).
+  days_to_failure            Int?
+
+  // 0.0 – 1.0 scalar: how far along the degradation ramp this row is.
+  // 0.0 = start of ramp / normal; 1.0 = day of failure.
+  pre_failure_ramp_intensity Float?    @default(0)
+
+  // ✅ PREDICTIVE MAINTENANCE — Operational Events (non-failure excursions)
+  // True when the row belongs to a planned operational event
+  // (choke adjustment, chemical treatment, planned workover, etc.)
+  is_operational_event       Boolean   @default(false)
+
+  // Human-readable event label, e.g. "Choke Adjustment", "Frequency Ramp"
+  event_type                 String?   @default("")
+
+  // ✅ PREDICTIVE MAINTENANCE — Post-Failure Recovery
+  // Day number within the recovery ramp after a workover (1, 2, 3 …).
+  // NULL when not in a recovery window.
+  post_failure_recovery_day  Int?
+
   // ✅ INDEXES (VERY IMPORTANT)
   @@index([asset_id, date])
   @@index([facility_id, date])
+  @@index([degradation_phase])
+  @@index([failure_mode])
+  @@index([days_to_failure])
+  @@index([is_operational_event])
 }
 
 model production_history {
