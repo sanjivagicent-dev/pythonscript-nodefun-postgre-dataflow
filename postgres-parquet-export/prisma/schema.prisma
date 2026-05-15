@@ -8,6 +8,8 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ── EXISTING: Apex Permian Digital Twin ──────────────────────────────────────
+
 model well_data {
   id                   String    @id @default(dbgenerated("gen_random_uuid()")) @db.Uuid
 
@@ -15,17 +17,14 @@ model well_data {
   asset_id             String
   facility_id          String
 
-  // ✅ TRUE PRODUCTION
   true_oil             Float?
   true_water           Float?
   true_gas             Float?
 
-  // ✅ TEST DATA
   test_oil             Float?
   test_water           Float?
   test_gas             Float?
 
-  // ✅ KPIs
   avg_tubing_pressure  Float?
   avg_casing_pressure  Float?
   avg_motor_amps       Float?
@@ -38,39 +37,17 @@ model well_data {
   motor_temp_f         Float?
   injection_rate_mcf   Float?
 
-  // ✅ STATUS
   status               String?
   notes                String?
 
-  // ✅ PREDICTIVE MAINTENANCE — Phase & Label
-  // "Normal" | "Pre-Failure" | "Failure" | "Post-Failure"
   degradation_phase          String?   @default("Normal")
-
-  // e.g. "Parted Rods", "Scale Deposition", "Liquid Loading"
   failure_mode               String?   @default("")
-
-  // Countdown to failure in days within the pre-failure ramp window.
-  // NULL outside the ramp window (Normal / Failure / Post-Failure days).
   days_to_failure            Int?
-
-  // 0.0 – 1.0 scalar: how far along the degradation ramp this row is.
-  // 0.0 = start of ramp / normal; 1.0 = day of failure.
   pre_failure_ramp_intensity Float?    @default(0)
-
-  // ✅ PREDICTIVE MAINTENANCE — Operational Events (non-failure excursions)
-  // True when the row belongs to a planned operational event
-  // (choke adjustment, chemical treatment, planned workover, etc.)
   is_operational_event       Boolean   @default(false)
-
-  // Human-readable event label, e.g. "Choke Adjustment", "Frequency Ramp"
   event_type                 String?   @default("")
-
-  // ✅ PREDICTIVE MAINTENANCE — Post-Failure Recovery
-  // Day number within the recovery ramp after a workover (1, 2, 3 …).
-  // NULL when not in a recovery window.
   post_failure_recovery_day  Int?
 
-  // ✅ INDEXES (VERY IMPORTANT)
   @@index([asset_id, date])
   @@index([facility_id, date])
   @@index([degradation_phase])
@@ -103,4 +80,197 @@ model invoices {
   total_usd           Float?
 
   @@index([asset_id, invoice_date], map: "idx_invoice_asset_date")
+}
+
+// ── NEW: Red Bluff Resources Digital Twin ────────────────────────────────────
+
+/// Asset registry for all Red Bluff Resources assets.
+/// type: "Well" | "Facility" | "Compressor" | "SWD Well" | "Tank Battery"
+/// lift: "Pumping Unit" | "ESP" | "Gas Lift" | null (supporting assets)
+model rb_assets {
+  id        BigInt  @id @default(autoincrement())
+  asset_id  String  @unique
+  type      String  // Well | Facility | Compressor | SWD Well | Tank Battery
+  lift      String? // Pumping Unit | ESP | Gas Lift | null
+  basin     String?
+  sub_basin String?
+  state     String?
+  county    String?
+  region    String?
+
+  @@index([asset_id])
+  @@index([type])
+  @@index([lift])
+}
+
+/// Personnel assignments per asset (prod_technician + well_perf_engineer per asset).
+/// Unique constraint on (asset_id, role_key) supports upsert in build_master.py.
+model rb_personnel {
+  id       BigInt @id @default(autoincrement())
+  asset_id String
+  role_key String // "prod_technician" | "well_perf_engineer"
+  name     String
+  role     String
+  email    String
+
+  @@unique([asset_id, role_key])
+  @@index([asset_id])
+}
+
+/// Daily sensor + production history for all 60 wells.
+/// Sensor columns are lift-type specific; non-applicable columns are NULL.
+/// Pumping Unit:  gross_stroke_len … motor_temp_f
+/// ESP:           avg_tubing_pressure … vibration_hz
+/// Gas Lift:      casing_injection_pressure_psi … choke_position_pct
+model rb_well_history {
+  id             BigInt   @id @default(autoincrement())
+  asset_id       String
+  date           DateTime @db.Date
+
+  // Production
+  allocated_oil   Float?
+  test_oil        Float?
+  allocated_water Float?
+  allocated_gas   Float?
+
+  // ── Pumping Unit sensors ─────────────────────────────────────────────────
+  gross_stroke_len    Float?
+  net_stroke_len      Float?
+  strokes_per_min     Float?
+  pump_fillage_pct    Float?
+  casing_pressure_psi Float?
+  tubing_pressure_psi Float?
+  motor_current_amps  Float?
+  freq_hz             Float?
+  pump_intake_pressure Float?
+  motor_temp_f        Float?
+
+  // ── ESP sensors ──────────────────────────────────────────────────────────
+  avg_tubing_pressure         Float?
+  avg_casing_pressure         Float?
+  pump_intake_pressure_psi    Float?
+  pump_discharge_pressure_psi Float?
+  vibration_hz                Float?
+
+  // ── Gas Lift sensors ─────────────────────────────────────────────────────
+  casing_injection_pressure_psi Float?
+  injection_rate_mscfd          Float?
+  wellhead_temp_f               Float?
+  choke_position_pct            Float?
+
+  run_status    String?
+  failure_cause String?
+
+  @@index([asset_id, date])
+  @@index([run_status])
+  @@index([failure_cause])
+}
+
+/// Daily operational data for Facility assets (one per lease).
+model rb_facility_history {
+  id       BigInt   @id @default(autoincrement())
+  asset_id String
+  date     DateTime @db.Date
+
+  tester_pressure_psi     Float?
+  tester_temp_f           Float?
+  tester_oil_rate_bpd     Float?
+  tester_water_rate_bpd   Float?
+  tester_gas_rate_mcfd    Float?
+  yesterday_oil_bbl       Float?
+  yesterday_water_bbl     Float?
+  yesterday_gas_mcf       Float?
+  gas_sales_rate_mscfd    Float?
+  gas_sales_temp_f        Float?
+  gas_sales_pressure_psi  Float?
+  lact_flow_rate_bblhr    Float?
+  lact_temp_f             Float?
+  lact_density_api        Float?
+  lact_bsw_pct            Float?
+  water_transfer_rate_bpd Float?
+  water_discharge_psi     Float?
+  water_temp_f            Float?
+  oil_tank_level_ft       Float?
+  water_tank_level_ft     Float?
+  run_status              String?
+
+  @@index([asset_id, date])
+}
+
+/// Daily operational data for Compressor assets (one per lease).
+model rb_compressor_history {
+  id       BigInt   @id @default(autoincrement())
+  asset_id String
+  date     DateTime @db.Date
+
+  suction_pressure_psi      Float?
+  suction_temp_f            Float?
+  discharge_pressure_psi    Float?
+  discharge_temp_f          Float?
+  throughput_mscfd          Float?
+  engine_rpm                Float?
+  fuel_gas_consumption_mcfd Float?
+  engine_temp_f             Float?
+  lube_oil_pressure_psi     Float?
+  runtime_hrs               Float?
+  run_status                String?
+
+  @@index([asset_id, date])
+}
+
+/// Daily operational data for Salt Water Disposal well assets (one per lease).
+model rb_swd_history {
+  id       BigInt   @id @default(autoincrement())
+  asset_id String
+  date     DateTime @db.Date
+
+  injection_rate_bpd          Float?
+  injection_pressure_psi      Float?
+  wellhead_pressure_psi       Float?
+  tubing_pressure_psi         Float?
+  casing_pressure_psi         Float?
+  injection_temp_f            Float?
+  daily_volume_injected_bbl   Float?
+  cumulative_volume_bbl       Float?
+  pump_discharge_pressure_psi Float?
+  pump_speed_hz               Float?
+  run_status                  String?
+
+  @@index([asset_id, date])
+}
+
+/// Daily operational data for Tank Battery assets (one per lease).
+model rb_tank_battery_history {
+  id       BigInt   @id @default(autoincrement())
+  asset_id String
+  date     DateTime @db.Date
+
+  oil_tank_level_ft     Float?
+  water_tank_level_ft   Float?
+  oil_tank_temp_f       Float?
+  water_tank_temp_f     Float?
+  oil_hauled_today_bbl  Float?
+  water_hauled_today_bbl Float?
+  high_tank_alarm       Int?   // 0 | 1
+  run_status            String?
+
+  @@index([asset_id, date])
+}
+
+/// Financial ledger for all Red Bluff Resources assets.
+/// category: "Monthly LOE" | "Ad-Hoc LOE" | "Workover"
+model rb_invoices {
+  id                  BigInt    @id @default(autoincrement())
+  invoice_id          String?
+  invoice_date        DateTime? @db.Date
+  category            String?   // Monthly LOE | Ad-Hoc LOE | Workover
+  gl_code             String?
+  service_description String?
+  vendor              String?
+  asset_id            String?
+  total_usd           Float?
+
+  @@index([asset_id, invoice_date], map: "idx_rb_invoice_asset_date")
+  @@index([category],               map: "idx_rb_invoice_category")
+  @@index([gl_code],                map: "idx_rb_invoice_gl_code")
 }
